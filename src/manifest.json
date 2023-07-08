@@ -1,0 +1,21 @@
+{
+    "name": "chorusMedley",
+    "version": "1.0.0",
+    "description": "YouTube再生リストにあるボカロ曲をサビメドレーとして再生する",
+    "background": {
+        "service_worker": "background.js"
+    },
+    "permissions": [
+        "tabs"
+    ],
+    "content_scripts": [
+        {
+            "matches": ["https://*/*"],
+            "js": ["content.js"]
+        }
+    ],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "manifest_version": 3
+}
