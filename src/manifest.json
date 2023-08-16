@@ -9,6 +9,10 @@
         "tabs",
         "storage"
     ],
+    "host_permissions": [
+        "https://widget.songle.jp/api/v1/",
+        "https://vocadb.net/api/"
+    ],
     "content_scripts": [
         {
             "matches": ["https://*.youtube.com/*"],
@@ -22,6 +26,11 @@
             "48": "img/icon48.png",
             "128": "img/icon128.png"
         }
+    },
+    "icons": {
+        "16": "img/icon16.png",
+            "48": "img/icon48.png",
+            "128": "img/icon128.png"
     },
     "manifest_version": 3
 }
