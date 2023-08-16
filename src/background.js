@@ -1,32 +1,59 @@
+chrome.runtime.onInstalled.addListener(()=>{
+    chrome.storage.local.set({ onChorus: true });
+    chrome.storage.local.set({ onErrorSkip: true });
+    chrome.storage.local.set({ nowUrl: "" });
+    chrome.storage.local.set({ onMute: true});
+});
+
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
-    if (changeInfo.url){
-        console.log('URL changed for tab', tabId, 'New URL:', changeInfo.url);
-        callChorus(tab.url)
-            .then(chorus => send(tab, chorus))
+    if(changeInfo.url){
+        chrome.tabs.sendMessage(tab.id, {
+            act: "resetBar"
+        });
     }
-});
-
-chrome.action.onClicked.addListener((tab) => {
-    callChorus(tab.url)
-        .then(chorus => send(tab, chorus))
+    chrome.storage.local.get(["onChorus"]).then((result) => {
+        if ((changeInfo.url) && (tab.url.includes("&list")) && (result.onChorus)){
+            console.log('URL changed for tab', tabId, 'New URL:', changeInfo.url);
+            chrome.storage.local.set({ nowUrl: changeInfo.url });
+            callChorus(tab.url)
+                .then(chorus => send(tab, chorus))
+                .catch((error) =>{
+                    chrome.tabs.sendMessage(tab.id, {
+                        act: "skipVideoSoon"
+                    });
+                });
+        }
+    });
     
-    // chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    //     // nowUrl = tabs[0];
-    //     console.log(tabs[0].url);
-    // });
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) =>{
-    if(request.sendFunction === "checkSameURL"){
-        let nowUrl;
+// chrome.action.onClicked.addListener((tab) => {
+//     chrome.storage.local.get(["onChorus"]).then((result) => {
+//         console.log(result.onChorus);
+//     });
+//     if (tab.url.includes("&list")){
+//         callChorus(tab.url)
+//             .then(chorus => send(tab, chorus))
+//     }
+    
+    
+//     // chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+//     //     // nowUrl = tabs[0];
+//     //     console.log(tabs[0].url);
+//     // });
+// });
 
-        // getCurrentTab().then((tab) => {
-        //     console.log(tab);
-        // });
-        sendResponse(nowUrl);
+// chrome.runtime.onMessage.addListener((request, sender, sendResponse) =>{
+//     if(request.sendFunction === "checkSameURL"){
+//         let nowUrl;
+
+//         getCurrentTab().then((tab) => {
+//             console.log(tab);
+//             sendResponse(nowUrl);
+//         });
         
-    }
-});
+//     }
+// });
 
 
 
@@ -38,7 +65,7 @@ function send(tab, chorus){
     });
     rtnPromise
         .catch((error) =>{
-            console.log("fdsafdsafdas");
+            
         });
 }
 
@@ -55,7 +82,7 @@ async function callChorus(youtube){
         }
     }
 
-    console.log(nicoURL);
+    // console.log(nicoURL);
     let songle = await fetch("https://widget.songle.jp/api/v1/song/chorus.json?url=" + nicoURL);
     let chorus = await songle.json();
     chorus = chorus["chorusSegments"][0]["repeats"][0];
@@ -64,12 +91,6 @@ async function callChorus(youtube){
     console.log(start);
     console.log(duration);
     return [start, duration];
-}
-
-async function getCurrentTab() {
-	// let queryOptions = { active: true, currentWindow: true };
-	let [tab] = await chrome.tabs.query({});
-	return [tab];
 }
 
 

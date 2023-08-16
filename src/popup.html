@@ -3,13 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="popup.css">
     <title>Document</title>
 </head>
-<body>
+<body style="margin:0px;">
     <div class="onChorus">
-        <h1>aaaa</h1>
-
+    </div>
+    <div name="checklist">
+        <input type="checkbox" id="onChorus" class="checkboxes">サビ再生<br>
+        <input type="checkbox" id="onErrorSkip" class="checkboxes">サビ取得失敗時スキップする<br>
+        <input type="checkbox" id="onMute" class="checkboxes">スキップ処理時ミュートする<br>
+    </div>
+    <div class="credit">
+        <a href="https://songle.jp/" target="_blank">
+            <img class="creditSongle" src="img/songle.png" alt="" width="75%" height="75%">
+        </a>
     </div>
     
+    <script src="popup.js"></script>
 </body>
 </html>
