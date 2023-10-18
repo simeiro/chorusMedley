@@ -18,10 +18,13 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
             chrome.storage.local.set({ nowUrl: changeInfo.url });
             callChorus(tab.url)
                 .then(chorus => send(tab, chorus))
-                .catch((error) =>{
+                .catch((error) =>{//cover処理
                     chrome.tabs.sendMessage(tab.id, {
-                        func: "skipVideoSoon"
+                        func: "seachCoverUrl",
+                        tab: tab,
                     });
+                    // console.log("a");
+                    
                 });
         }
     }).catch((error) =>{
@@ -29,6 +32,87 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab){
     });
     
 });
+
+chrome.runtime.onMessage.addListener((request) => {
+    
+    switch(request.func){
+        case "coverToOriginal":
+            let forFlag = false;
+            let promises = [];
+            for (const text of request.candidateText){
+                let vocadb = "https://vocadb.net/api/songs?query=https://youtu.be/" + text + "&fields=PVs";
+                let seachVocadb = async () => {
+                    try{
+                        let vocadbSarch = await fetch(vocadb);
+                        vocadbSarch = await vocadbSarch.json();
+                        return vocadbSarch;
+                    }catch (error){
+                        
+                    };
+                };
+                let start;
+                let duration;
+                console.log(text);
+                promises.push(
+                    seachVocadb()
+                        .then((vocadbData) =>{
+                            let songName = vocadbData["items"][0]["defaultName"];
+                            if (request.title.includes(songName)){
+                                try{
+                                    let seachUrl = vocadbData["items"][0]["pvs"];
+                                    for(let url of seachUrl){
+                                        if (url["url"].includes("nicovideo")){
+                                            seachUrl = url["url"];
+                                            break;
+                                        }
+                                    }
+                                    if (seachUrl === vocadbData["items"][0]["pvs"]){
+                                        seachUrl = "https://www.youtube.com/watch?v=" + text;
+                                    }
+                                    let seachSongle = async () => {
+                                        try{
+                                            let songleSarch = await fetch("https://widget.songle.jp/api/v1/song/chorus.json?url=" + seachUrl);
+                                            songleSarch = await songleSarch.json();
+                                            return songleSarch;
+                                        }catch(error){
+                                            return null;
+                                        }
+                                    };
+                                    seachSongle()
+                                        .then((songleData) =>{
+                                            if (!forFlag){
+                                                songleData = songleData["chorusSegments"][0]["repeats"][0];
+                                                start = songleData["start"];
+                                                duration = songleData["duration"];
+                                                forFlag = true;
+                                                send(request.tab, [start, duration]);
+                                            }
+                                        });
+                                }catch(error){
+
+                                }
+                            }
+                        })
+                        .catch((error) => {
+                            console.log("vocadb情報取得失敗");
+                        })
+                    );
+            }
+            Promise.all(promises)
+                .then(() => {
+                    // console.log(promises);//promisesが全て完了しているか
+                    if (!forFlag) {
+                        chrome.tabs.sendMessage(request.tab.id, {
+                            func: "skipVideoSoon"
+                        });
+                    }
+                });
+        default:
+            break;
+    }
+});
+
+
 
 function send(tab, chorus){
     chrome.tabs.sendMessage(tab.id, {
@@ -43,29 +127,41 @@ function send(tab, chorus){
 
 async function callChorus(youtube){
     let vocadb = "https://vocadb.net/api/songs?query=" + youtube + "&fields=PVs";
-    let nicoRes;
+    let vocadbSarch;
     try{
-        nicoRes = await fetch(vocadb);
+        vocadbSarch = await fetch(vocadb);
     }catch(error){
-        console.log("oi");
+        // console.log("動画URLに対するvocaDBの情報取得に失敗しました。");
         return null;
     }
-    let nicoURL = await nicoRes.json();
-    nicoURL = nicoURL["items"][0]["pvs"];
+    let seachURL = await vocadbSarch.json();
+    seachURL = seachURL["items"][0]["pvs"];
+    // console.log(seachURL);
 
-    for(let url of nicoURL){
+    let nicoUrlFlag = true;
+    for(let url of seachURL){
         if (url["url"].includes("nicovideo")){
-            nicoURL = url["url"];
+            seachURL = url["url"];
+            nicoUrlFlag = false;
             break;
         }
     }
+    if(nicoUrlFlag){
+        for(let url of seachURL){
+            if (url["url"].includes("youtu.be")){
+                seachURL = url["url"];
+                seachURL = seachURL.replace("youtu.be/", "www.youtube.com/watch?v=");
+                break;
+            }
+        }
+    }
 
-    // console.log(nicoURL);
+    // console.log(seachURL);
     let songle;
     try{
-        songle = await fetch("https://widget.songle.jp/api/v1/song/chorus.json?url=" + nicoURL);
+        songle = await fetch("https://widget.songle.jp/api/v1/song/chorus.json?url=" + seachURL);
     }catch(error){
-        console.log("oi1");
+        // console.log("動画URLに対するsongle情報の取得に失敗しました。");
         return null;
     }
     let chorus = await songle.json();

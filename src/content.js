@@ -16,6 +16,29 @@ chrome.runtime.onMessage.addListener(function(request){
         case "skipVideoSoon":
             document.getElementsByTagName('video')[0].currentTime = Number(convertTime(document.getElementsByClassName("ytp-time-duration")[0].innerText) / 1000) - 1.5;
             break;
+        case "seachCoverUrl":
+            let urlTags = document.querySelectorAll(".yt-core-attributed-string__link");
+            let candidateText = [];
+            urlTags.forEach(tag =>{
+                if (tag.getAttribute('href').includes("/watch?v=")){
+                    let text = tag.getAttribute('href').substring("/watch?v=".length);
+                    if (text.includes("&t=")){
+                        text = text.slice(0, text.indexOf("&t="));
+                    }
+                    candidateText.push(text);
+                }
+            });
+            let h1Element = document.querySelector('h1.ytd-watch-metadata');
+            let titleElemnt = h1Element.querySelector('.ytd-watch-metadata');
+            let title = titleElemnt.innerText;
+            // console.log(title);//youtubeタイトル
+            chrome.runtime.sendMessage({
+                func: "coverToOriginal",
+                title: title,
+                candidateText: candidateText,
+                tab: request.tab
+            });
+            break;
         case "resetBar":
             returnBar(request.url);
             break;
@@ -100,3 +123,7 @@ function returnBar(url){
     });
     return;
 }
+
+//class="yt-core-attributed-string__link yt-core-attributed-string__link--display-type yt-core-attributed-string__link--call-to-action-color"
+
+//<a class="yt-core-attributed-string__link yt-core-attributed-string__link--display-type yt-core-attributed-string__link--call-to-action-color" tabindex="0" href="/watch?v=3em-J9yYPAo&amp;t=0s" rel="nofollow" target="" force-new-state="true">&nbsp;&nbsp;<span class="yt-core-attributed-string--inline-flex-mod"><img alt="" style="height: 10px; width: 14px;" class="yt-core-attributed-string__image-element yt-core-attributed-string__image-element--image-alignment-vertical-center yt-core-image yt-core-image--content-mode-scale-to-fill yt-core-image--loaded" src="https://www.gstatic.com/youtube/img/watch/yt_favicon.png"></span>&nbsp;•&nbsp;1000年生きてる&nbsp;/&nbsp;いよわ&nbsp;feat.初音ミク（living&nbsp;mill...&nbsp;&nbsp;</a>
